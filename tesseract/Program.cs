@@ -1,50 +1,61 @@
-﻿using Tesseract;
+﻿using ImageMagick;
+using IronOcr;
+using IronPdf;
+using IronSoftware.Drawing;
+using System.Text.RegularExpressions;
+using Tesseract;
 using Xceed.Document.NET;
 using Xceed.Words.NET;
+using static System.Net.Mime.MediaTypeNames;
+
 
 
 Console.WriteLine("Extracting started!");
-string tessDataPath = @"./tessdata";
+IronOcr.License.LicenseKey =  "your-key";// to be put in external file
+bool licenseStatus = IronOcr.License.IsValidLicense(IronOcr.License.LicenseKey);
+
+string dataPath = @"./tessdata";
 string imagesPath = @"./images";
-string wordPath = Path.Combine(tessDataPath,"OCR_Output.docx");
+string wordPath = Path.Combine(dataPath,"OCR_Output.docx");
 List<string> extractedText = new List<string>();
+string[] imageFiles = Directory.GetFiles(imagesPath,"*.jpg");// to be configurable
+List<OcrInput> inputs = new List<OcrInput>();
 
 
-using var engine = new TesseractEngine(tessDataPath,"ara",EngineMode.Default);
-engine.SetVariable("tessedit_char_whitelist","ءآأؤإئابةتثجحخدذرزسشصضطظعغفقكلمنهوىيًٌٍَُِّْ٠۰١۱٢۲٣۳٤۴٥۵٦۶٧۷٨۸٩۹ ");
-
-
-
-string[] imageFiles = Directory.GetFiles(imagesPath,"*.*");
-
-foreach(string imageFile in imageFiles) {
-    try {
-        if(imageFile.EndsWith(".png",StringComparison.OrdinalIgnoreCase)) {
-            using var pix = Pix.LoadFromFile(imageFile);
-
-            using var page = engine.Process(pix);
-            string text = page.GetText();
-            extractedText.Add(text);
-        }
-    } catch(Exception ex) {
-        Console.WriteLine($"Error processing {imageFile}: {ex.Message}");
-    }
+var myPath = Directory.GetFiles(dataPath,"*.pdf");
+if(!myPath.Any()) {
+    Console.WriteLine("No pdf was found, please add a pdf file and restart the service");
 }
+var pdf = PdfDocument.FromFile(myPath[0]);
+pdf.RasterizeToImageFiles( imagesPath + @"\page-*.png");
 
 
+
+
+var Ocr = new IronTesseract();
+Ocr.Language = OcrLanguage.Arabic;
+
+
+
+using OcrInput input = new OcrInput();
+foreach(string imageFilePath in imageFiles) {
+    
+    input.LoadImage(imageFilePath);
+    var result = Ocr.Read(input);
+    extractedText.Add(result.Text);
+    input.RemovePage(0);
+}
 
 using(var doc = DocX.Create(wordPath)) {
     foreach(string text in extractedText) {
         var p = doc.InsertParagraph(text);
-        p.Font("Arial");                
+        p.Font("Arial");
         p.FontSize(14);
-        p.Alignment = Alignment.right;   
+        p.Alignment = Alignment.right;
         p.Direction = Direction.RightToLeft;
 
-        doc.InsertSectionPageBreak();    
+        doc.InsertSectionPageBreak();
     }
     doc.Save();
 }
-
-
 Console.WriteLine($"Task completed! Word document saved at: {Path.GetFullPath(wordPath)}");

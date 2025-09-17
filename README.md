@@ -1,4 +1,4 @@
-This is the first version of OCR app specilized in extracting arabic letters.\
+This is the first version of OCR a simple app for extracting arabic letters.\
 Some steps are still manual and not yet included.\
 To use this app make sure you installed .Net8 (https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/sdk-8.0.413-windows-x64-installer)\
 If you are running this app from bin ( running the exe file)\
